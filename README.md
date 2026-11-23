@@ -1,7 +1,7 @@
 # Call Transcription for Sangoma Phone
 
 A plugin for the unofficial Sangoma Phone builds that have a **Plugins** page (☰ / tray / Sangoma Phone
-menu → Plugins). It adds **Transcripts** to the app's top bar, after Chat: a live transcript of each call with both sides
+menu → Plugins). It adds **Transcripts** to the app's navigation bar, under Chat: a live transcript of each call with both sides
 labelled, and the transcripts of earlier calls. Speech-to-text is done by a Whisper server you run
 yourself; no audio goes anywhere else.
 

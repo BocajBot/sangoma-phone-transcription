@@ -6,6 +6,8 @@ const { Segmenter, wav } = require('./lib/segmenter');
 const { Store } = require('./lib/store');
 
 const SPEAKER = { local: 'You', remote: 'Caller' };
+// A page with lines of text, drawn in the colour of the app's own navigation icons.
+const ICON = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h9l4 4v14H6z"/><path d="M9 11h7M9 15h7M9 7h4"/></svg>';
 let api, store, win = null;
 const live = new Map();   // call id -> { conversation, segmenters: { local, remote }, pending }
 let queue = Promise.resolve();
@@ -110,7 +112,7 @@ module.exports = {
     api.handle('state', snapshot);
     api.handle('remove', id => { store.remove(id); refresh(); });
     api.onAction('open', openWindow);
-    if (api.addNavItem) api.addNavItem({ id: 'transcripts', label: 'Transcripts', file: 'window/transcripts.html' });
+    if (api.addNavItem) api.addNavItem({ id: 'transcripts', label: 'Transcripts', file: 'window/transcripts.html', icon: ICON });
   },
   deactivate() { for (const id of [...live.keys()]) endCall({ id, endedAt: Date.now() }); },
 };
