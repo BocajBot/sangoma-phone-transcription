@@ -1,7 +1,7 @@
 {
   "id": "transcription",
   "name": "Call Transcription",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Live transcripts of your calls, using a Whisper server you host yourself.",
   "main": "main.js",
   "audio": true,

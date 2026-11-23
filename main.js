@@ -48,9 +48,13 @@ function openWindow() {
   win = api.openWindow('window/transcripts.html', { width: 720, height: 620, title: 'Call Transcripts' });
 }
 
+const ANSWERED = new Set(['onThePhone', 'onHold']);
+
+// A call only becomes a conversation once it is answered: calls that ring and are never taken (and the
+// ringing before an answer) are not transcribed and leave nothing behind.
 function startCall(call) {
-  if (live.has(call.id)) return;
-  const conversation = store.start(call);
+  if (live.has(call.id) || !ANSWERED.has(call.state)) return;
+  const conversation = store.start({ ...call, startedAt: Date.now() });
   const entry = { conversation, segmenters: {}, pending: 0 };
   for (const channel of ['local', 'remote']) {
     entry.segmenters[channel] = new Segmenter(u => {
@@ -80,7 +84,11 @@ function endCall(call) {
   if (!entry) return;
   for (const s of Object.values(entry.segmenters)) s.flush();
   live.delete(call.id);
-  queue = queue.then(() => { store.end(entry.conversation, call.endedAt || Date.now()); refresh(); });
+  queue = queue.then(() => {
+    if (entry.conversation.lines.length) store.end(entry.conversation, call.endedAt || Date.now());
+    else store.remove(entry.conversation.id);  // answered, but nothing was said
+    refresh();
+  });
   refresh();
 }
 
@@ -91,6 +99,7 @@ module.exports = {
     api.settings.onChange(s => { try { store.configure(storeOptions(s)); lastError = null; } catch (e) { lastError = `Can't use the folder: ${e.message}`; } refresh(); });
     api.calls.on('start', startCall);
     api.calls.on('update', call => {
+      startCall(call);  // answered now?
       const entry = live.get(call.id);
       if (entry) { Object.assign(entry.conversation, { number: call.number || entry.conversation.number, display: call.display || entry.conversation.display }); refresh(); }
     });
