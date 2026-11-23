@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'">
+<title>Call Transcripts</title>
+<style>
+  :root { color-scheme: light dark; --line: #d6dce1; --muted: #657e91; --accent: #158fcf; --live: #c70816; }
+  html, body { height: 100%; }
+  body { margin: 0; display: flex; font: 14px/1.45 'Open Sans', system-ui, sans-serif; background: Canvas; color: CanvasText; }
+  nav { width: 220px; border-right: 1px solid var(--line); overflow-y: auto; flex: none; }
+  nav button { display: block; width: 100%; text-align: left; padding: 10px 12px; border: 0; border-bottom: 1px solid var(--line); background: none; color: inherit; font: inherit; cursor: pointer; }
+  nav button.on { background: rgba(21, 143, 207, .15); }
+  nav small, .muted { color: var(--muted); }
+  .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--live); margin-right: 6px; animation: blink 1.2s infinite; }
+  @keyframes blink { 50% { opacity: .25; } }
+  main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+  header { padding: 10px 14px; border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 10px; }
+  header div { flex: 1; min-width: 0; }
+  #lines { flex: 1; overflow-y: auto; padding: 12px 14px; }
+  .line { margin: 0 0 10px; max-width: 80%; padding: 7px 10px; border-radius: 10px; background: rgba(127, 127, 127, .14); }
+  .line.you { margin-left: auto; background: rgba(21, 143, 207, .18); }
+  .line b { display: block; font-size: 11.5px; color: var(--muted); font-weight: 600; }
+  #status { padding: 6px 14px; border-top: 1px solid var(--line); font-size: 12.5px; }
+  #status.error { color: var(--live); }
+  button.small { font: inherit; padding: 4px 10px; border: 1px solid var(--line); border-radius: 5px; background: ButtonFace; color: ButtonText; cursor: pointer; }
+</style>
+</head>
+<body>
+<nav id="list"></nav>
+<main>
+  <header><div id="title" class="muted">No conversation selected</div><button class="small" id="copy" hidden>Copy</button><button class="small" id="remove" hidden>Delete</button></header>
+  <div id="lines"></div>
+  <div id="status" class="muted"></div>
+</main>
+<script>
+let state = { conversations: [], liveIds: [] }, selected = null, follow = true;
+const $ = id => document.getElementById(id);
+const time = t => new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+const day = t => new Date(t).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+const who = c => c.display || c.number || 'Unknown caller';
+
+function render() {
+  const live = new Set(state.liveIds);
+  if (follow && state.liveIds.length) selected = state.liveIds[state.liveIds.length - 1];
+  if (!state.conversations.some(c => c.id === selected)) selected = state.conversations.at(-1)?.id ?? null;
+  const list = $('list');
+  list.replaceChildren();
+  for (const c of [...state.conversations].reverse()) {
+    const b = document.createElement('button');
+    b.className = c.id === selected ? 'on' : '';
+    if (live.has(c.id)) b.append(Object.assign(document.createElement('span'), { className: 'dot', title: 'Transcribing' }));
+    b.append(who(c), document.createElement('br'), Object.assign(document.createElement('small'), { textContent: `${day(c.startedAt)} · ${c.lines.length} lines` }));
+    b.onclick = () => { selected = c.id; follow = live.has(c.id); render(); };
+    list.append(b);
+  }
+  const c = state.conversations.find(x => x.id === selected);
+  $('title').textContent = c ? `${who(c)}${c.number && c.display ? ` (${c.number})` : ''} · ${day(c.startedAt)}${live.has(c.id) ? ' · transcribing…' : ''}` : 'No conversation yet. Transcripts appear here during a call.';
+  $('copy').hidden = $('remove').hidden = !c;
+  const lines = $('lines'), atEnd = lines.scrollHeight - lines.scrollTop - lines.clientHeight < 60;
+  lines.replaceChildren();
+  for (const l of c ? c.lines : []) {
+    const p = document.createElement('p');
+    p.className = 'line' + (l.speaker === 'You' ? ' you' : '');
+    p.append(Object.assign(document.createElement('b'), { textContent: `${l.speaker} · ${time(l.at)}` }), l.text);
+    lines.append(p);
+  }
+  if (atEnd) lines.scrollTop = lines.scrollHeight;
+  const status = $('status');
+  status.className = state.error ? 'error' : 'muted';
+  status.textContent = state.error ? `Transcription problem: ${state.error}`
+    : (state.saving ? `Saved in ${state.folder}` : 'Kept in memory until Sangoma Phone closes') + (state.evicted ? ` · ${state.evicted} older conversation(s) dropped from memory to make room` : '');
+}
+$('copy').onclick = () => {
+  const c = state.conversations.find(x => x.id === selected);
+  if (c) navigator.clipboard.writeText(c.lines.map(l => `[${time(l.at)}] ${l.speaker}: ${l.text}`).join('\n'));
+};
+$('remove').onclick = () => { if (selected && confirm('Delete this transcript?')) window.plugin.invoke('remove', selected); };
+window.plugin.on('state', s => { state = s; render(); });
+window.plugin.invoke('state').then(s => { state = s; render(); });
+</script>
+</body>
+</html>
