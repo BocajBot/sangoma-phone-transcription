@@ -40,7 +40,10 @@ const snapshot = () => ({
 });
 const refresh = () => api.send('state', snapshot());
 
+// In builds whose plugin host has it, the transcripts are an entry in the app's top bar (after Chat);
+// in older ones they get a window of their own.
 function openWindow() {
+  if (api.showNavItem) return api.showNavItem('transcripts');
   if (win && !win.isDestroyed()) { win.show(); return; }
   win = api.openWindow('window/transcripts.html', { width: 720, height: 620, title: 'Call Transcripts' });
 }
@@ -98,6 +101,7 @@ module.exports = {
     api.handle('state', snapshot);
     api.handle('remove', id => { store.remove(id); refresh(); });
     api.onAction('open', openWindow);
+    if (api.addNavItem) api.addNavItem({ id: 'transcripts', label: 'Transcripts', file: 'window/transcripts.html' });
   },
   deactivate() { for (const id of [...live.keys()]) endCall({ id, endedAt: Date.now() }); },
 };

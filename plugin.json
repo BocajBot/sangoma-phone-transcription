@@ -1,24 +1,113 @@
 {
   "id": "transcription",
   "name": "Call Transcription",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Live transcripts of your calls, using a Whisper server you host yourself.",
   "main": "main.js",
   "audio": true,
-  "actions": [{ "id": "open", "label": "Call Transcripts" }],
+  "actions": [
+    {
+      "id": "open",
+      "label": "Call Transcripts"
+    }
+  ],
   "settings": [
-    { "key": "server", "type": "text", "label": "Speech-to-text server", "default": "http://127.0.0.1:8787", "placeholder": "http://host:port", "help": "Address and port of the server that runs the Whisper model." },
-    { "key": "endpoint", "type": "text", "label": "Endpoint", "default": "/transcribe" },
-    { "key": "api", "type": "select", "label": "How the server takes audio", "default": "raw", "options": [
-      { "value": "raw", "label": "WAV file as the request body, answers {\"text\": …}" },
-      { "value": "openai", "label": "OpenAI style (/v1/audio/transcriptions, file upload)" }] },
-    { "key": "model", "type": "text", "label": "Model name (OpenAI style only)", "default": "whisper-1", "showIf": { "api": "openai" } },
-    { "key": "authHeader", "type": "text", "label": "Secret header name (blank if the server needs none)", "default": "x-local-secret" },
-    { "key": "authValue", "type": "password", "label": "Secret", "default": "", "help": "Kept in this computer's Sangoma Phone profile." },
-    { "key": "language", "type": "text", "label": "Language (OpenAI style only; blank = detect)", "default": "en", "showIf": { "api": "openai" } },
-    { "key": "openOnCall", "type": "boolean", "label": "Open the transcript window when a call starts", "default": true },
-    { "key": "saveLocally", "type": "boolean", "label": "Save transcripts on this computer", "default": false, "help": "Off: transcripts are kept in memory and are gone when Sangoma Phone closes." },
-    { "key": "folder", "type": "folder", "label": "Folder for saved transcripts", "default": "", "showIf": { "saveLocally": true } },
-    { "key": "memoryPercent", "type": "percent", "of": "memory", "label": "Memory transcripts may use", "default": 2, "min": 1, "max": 85, "showIf": { "saveLocally": false }, "help": "When this is full, the oldest conversations are dropped to make room." }
+    {
+      "key": "server",
+      "type": "text",
+      "label": "Speech-to-text server",
+      "default": "http://127.0.0.1:8787",
+      "placeholder": "http://host:port",
+      "help": "Address and port of the server that runs the Whisper model."
+    },
+    {
+      "key": "endpoint",
+      "type": "text",
+      "label": "Endpoint",
+      "default": "/transcribe"
+    },
+    {
+      "key": "api",
+      "type": "select",
+      "label": "How the server takes audio",
+      "default": "raw",
+      "options": [
+        {
+          "value": "raw",
+          "label": "WAV file as the request body, answers {\"text\": \u2026}"
+        },
+        {
+          "value": "openai",
+          "label": "OpenAI style (/v1/audio/transcriptions, file upload)"
+        }
+      ]
+    },
+    {
+      "key": "model",
+      "type": "text",
+      "label": "Model name (OpenAI style only)",
+      "default": "whisper-1",
+      "showIf": {
+        "api": "openai"
+      }
+    },
+    {
+      "key": "authHeader",
+      "type": "text",
+      "label": "Secret header name (blank if the server needs none)",
+      "default": "x-local-secret"
+    },
+    {
+      "key": "authValue",
+      "type": "password",
+      "label": "Secret",
+      "default": "",
+      "help": "Kept in this computer's Sangoma Phone profile."
+    },
+    {
+      "key": "language",
+      "type": "text",
+      "label": "Language (OpenAI style only; blank = detect)",
+      "default": "en",
+      "showIf": {
+        "api": "openai"
+      }
+    },
+    {
+      "key": "openOnCall",
+      "type": "boolean",
+      "label": "Switch to Transcripts when a call starts",
+      "default": false,
+      "help": "Off: the call screen stays in front; open Transcripts from the top bar when you want to read along."
+    },
+    {
+      "key": "saveLocally",
+      "type": "boolean",
+      "label": "Save transcripts on this computer",
+      "default": false,
+      "help": "Off: transcripts are kept in memory and are gone when Sangoma Phone closes."
+    },
+    {
+      "key": "folder",
+      "type": "folder",
+      "label": "Folder for saved transcripts",
+      "default": "",
+      "showIf": {
+        "saveLocally": true
+      }
+    },
+    {
+      "key": "memoryPercent",
+      "type": "percent",
+      "of": "memory",
+      "label": "Memory transcripts may use",
+      "default": 2,
+      "min": 1,
+      "max": 85,
+      "showIf": {
+        "saveLocally": false
+      },
+      "help": "When this is full, the oldest conversations are dropped to make room."
+    }
   ]
 }

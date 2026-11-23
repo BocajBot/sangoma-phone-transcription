@@ -1,12 +1,12 @@
 # Call Transcription for Sangoma Phone
 
 A plugin for the unofficial Sangoma Phone builds that have a **Plugins** page (☰ / tray / Sangoma Phone
-menu → Plugins). It shows a live transcript of each call in its own window, with both sides labelled,
-and keeps the transcripts of earlier calls. Speech-to-text is done by a Whisper server you run
+menu → Plugins). It adds **Transcripts** to the app's top bar, after Chat: a live transcript of each call with both sides
+labelled, and the transcripts of earlier calls. Speech-to-text is done by a Whisper server you run
 yourself; no audio goes anywhere else.
 
 Transcribing records what both people say. Tell the people you talk to where the law or your company
-requires it. The plugin is off until you switch it on, and the transcript window shows a red dot
+requires it. The plugin is off until you switch it on, and Transcripts shows a red dot
 while a call is being transcribed.
 
 ## Install
@@ -30,7 +30,7 @@ To update: `git pull` in that folder, then switch the plugin off and on (or rest
 | Speech-to-text server, Endpoint | Where the Whisper server listens, e.g. `http://192.168.1.20:8790` and `/transcribe` |
 | How the server takes audio | A WAV file as the request body, or OpenAI style (`/v1/audio/transcriptions`) |
 | Secret header name, Secret | Sent with every request if the server wants one (default header: `x-local-secret`) |
-| Open the transcript window when a call starts | |
+| Switch to Transcripts when a call starts | Off by default, so the call screen stays in front |
 | Save transcripts on this computer | On: one JSON file per call in the folder you choose. Off: kept in memory until the app closes |
 | Memory transcripts may use | Only when not saving: a share of this computer's memory, 85% at most. When it is full, the oldest conversations are dropped (the window says how many) |
 
