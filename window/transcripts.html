@@ -67,8 +67,9 @@ function render() {
   }
   if (atEnd) lines.scrollTop = lines.scrollHeight;
   const status = $('status');
-  status.className = state.error ? 'error' : 'muted';
-  status.textContent = state.error ? `Transcription problem: ${state.error}`
+  status.className = state.error || state.noAudio ? 'error' : 'muted';
+  status.textContent = state.noAudio ? 'No audio is arriving from this call. Switch the plugin off and on under Plugins; if that does not help, the app needs a restart after the call.'
+    : state.error ? `Transcription problem: ${state.error}`
     : (state.saving ? `Saved in ${state.folder}` : 'Kept in memory until Sangoma Phone closes') + (state.evicted ? ` · ${state.evicted} older conversation(s) dropped from memory to make room` : '');
 }
 $('copy').onclick = () => {

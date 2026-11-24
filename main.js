@@ -12,6 +12,7 @@ let api, store, win = null;
 const live = new Map();   // call id -> { conversation, segmenters: { local, remote }, pending }
 let queue = Promise.resolve();
 let lastError = null;
+let watchdog = null;
 
 const limitFor = s => (s.saveLocally ? Infinity : api.system.totalMemory * Math.min(85, s.memoryPercent) / 100);
 const storeOptions = s => ({ limitBytes: limitFor(s), folder: s.saveLocally ? s.folder : '' });
@@ -39,6 +40,8 @@ const view = c => ({ id: c.id, number: c.number, display: c.display, startedAt: 
 const snapshot = () => ({
   conversations: store.conversations.map(view), evicted: store.evicted, error: lastError,
   saving: !!store.folder, folder: store.folder, liveIds: [...live.values()].map(l => l.conversation.id),
+  // audio arrives all the time during a call, silence included: a gap means the app stopped passing it on
+  noAudio: [...live.values()].some(l => Date.now() - l.audioAt > 15000),
 });
 const refresh = () => api.send('state', snapshot());
 
@@ -57,11 +60,12 @@ const ANSWERED = new Set(['onThePhone', 'onHold']);
 function startCall(call) {
   if (live.has(call.id) || !ANSWERED.has(call.state)) return;
   const conversation = store.start({ ...call, startedAt: Date.now() });
-  const entry = { conversation, segmenters: {}, pending: 0 };
+  const entry = { conversation, segmenters: {}, pending: 0, audioAt: Date.now() };
   for (const channel of ['local', 'remote']) {
     entry.segmenters[channel] = new Segmenter(u => {
       entry.pending++;
-      // One request at a time, in the order things were said.
+      // One request at a time, in the order things were said. Nothing may break the chain: a step
+      // that throws would silently stop every later one.
       queue = queue.then(async () => {
         try {
           const text = await transcribe(u.pcm);
@@ -72,8 +76,8 @@ function startCall(call) {
           api.log('transcription failed:', e.message);
         }
         entry.pending--;
-        refresh();
-      });
+        try { refresh(); } catch (e) { api.log('refresh failed:', e.message); }
+      }).catch(e => api.log('queue step failed:', e && e.message));
     });
   }
   live.set(call.id, entry);
@@ -107,14 +111,19 @@ module.exports = {
     });
     api.calls.on('end', endCall);
     api.audio.on(({ callId, channel, pcm }) => {
-      live.get(callId)?.segmenters[channel].push(pcm);
+      const entry = live.get(callId);
+      if (!entry) return;
+      entry.audioAt = Date.now();
+      entry.segmenters[channel].push(pcm);
     });
     api.handle('state', snapshot);
     api.handle('remove', id => { store.remove(id); refresh(); });
     // The page can't write to the clipboard itself (the app only grants pages media permissions).
     api.handle('copy', text => { require('electron').clipboard.writeText(String(text)); return true; });
     api.onAction('open', openWindow);
+    for (const call of api.calls.list ? api.calls.list() : []) startCall(call);  // switched on during a call
+    watchdog = setInterval(() => { if (live.size) refresh(); }, 5000);
     if (api.addNavItem) api.addNavItem({ id: 'transcripts', label: 'Transcripts', file: 'window/transcripts.html', icon: ICON });
   },
-  deactivate() { for (const id of [...live.keys()]) endCall({ id, endedAt: Date.now() }); },
+  deactivate() { clearInterval(watchdog); for (const id of [...live.keys()]) endCall({ id, endedAt: Date.now() }); },
 };
