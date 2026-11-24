@@ -1,7 +1,7 @@
 {
   "id": "transcription",
   "name": "Call Transcription",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Live transcripts of your calls, using a Whisper server you host yourself.",
   "main": "main.js",
   "audio": true,
@@ -71,6 +71,78 @@
       "default": "en",
       "showIf": {
         "api": "openai"
+      }
+    },
+    {
+      "key": "fallbackEnabled",
+      "type": "boolean",
+      "label": "Use a second server when the first can't be reached",
+      "default": false,
+      "help": "The first server is tried again every 30 seconds."
+    },
+    {
+      "key": "fallbackServer",
+      "type": "text",
+      "label": "Second server",
+      "default": "http://127.0.0.1:8787",
+      "placeholder": "http://host:port",
+      "showIf": {
+        "fallbackEnabled": true
+      }
+    },
+    {
+      "key": "fallbackEndpoint",
+      "type": "text",
+      "label": "Second server: endpoint",
+      "default": "/transcribe",
+      "showIf": {
+        "fallbackEnabled": true
+      }
+    },
+    {
+      "key": "fallbackApi",
+      "type": "select",
+      "label": "Second server: how it takes audio",
+      "default": "raw",
+      "options": [
+        {
+          "value": "raw",
+          "label": "WAV file as the request body, answers {\"text\": \u2026}"
+        },
+        {
+          "value": "openai",
+          "label": "OpenAI style (/v1/audio/transcriptions, file upload)"
+        }
+      ],
+      "showIf": {
+        "fallbackEnabled": true
+      }
+    },
+    {
+      "key": "fallbackModel",
+      "type": "text",
+      "label": "Second server: model name (OpenAI style only)",
+      "default": "whisper-1",
+      "showIf": {
+        "fallbackEnabled": true
+      }
+    },
+    {
+      "key": "fallbackAuthHeader",
+      "type": "text",
+      "label": "Second server: secret header name",
+      "default": "x-local-secret",
+      "showIf": {
+        "fallbackEnabled": true
+      }
+    },
+    {
+      "key": "fallbackAuthValue",
+      "type": "password",
+      "label": "Second server: secret",
+      "default": "",
+      "showIf": {
+        "fallbackEnabled": true
       }
     },
     {

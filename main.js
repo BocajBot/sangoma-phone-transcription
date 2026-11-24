@@ -4,11 +4,12 @@
 'use strict';
 const { Segmenter, wav } = require('./lib/segmenter');
 const { Store } = require('./lib/store');
+const { createClient } = require('./lib/servers');
 
 const SPEAKER = { local: 'You', remote: 'Caller' };
 // A page with lines of text, drawn in the colour of the app's own navigation icons.
 const ICON = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h9l4 4v14H6z"/><path d="M9 11h7M9 15h7M9 7h4"/></svg>';
-let api, store, win = null;
+let api, store, client, win = null;
 const live = new Map();   // call id -> { conversation, segmenters: { local, remote }, pending }
 let queue = Promise.resolve();
 let lastError = null;
@@ -17,24 +18,7 @@ let watchdog = null;
 const limitFor = s => (s.saveLocally ? Infinity : api.system.totalMemory * Math.min(85, s.memoryPercent) / 100);
 const storeOptions = s => ({ limitBytes: limitFor(s), folder: s.saveLocally ? s.folder : '' });
 
-async function transcribe(pcm) {
-  const s = api.settings.get();
-  const url = s.server.replace(/\/+$/, '') + '/' + s.endpoint.replace(/^\/+/, '');
-  const headers = {};
-  if (s.authHeader && s.authValue) headers[s.authHeader] = s.authValue;
-  let body = wav(pcm);
-  if (s.api === 'openai') {
-    const form = new FormData();
-    form.append('file', new Blob([body], { type: 'audio/wav' }), 'audio.wav');
-    form.append('model', s.model || 'whisper-1');
-    if (s.language) form.append('language', s.language);
-    form.append('response_format', 'json');
-    body = form;
-  } else headers['content-type'] = 'audio/wav';
-  const res = await fetch(url, { method: 'POST', headers, body, signal: AbortSignal.timeout(60000) });
-  if (!res.ok) throw new Error(`${url} answered ${res.status}${res.status === 401 ? ' (check the secret under Plugins)' : ''}`);
-  return String((await res.json()).text || '').trim();
-}
+const transcribe = pcm => client.transcribe(pcm);
 
 const view = c => ({ id: c.id, number: c.number, display: c.display, startedAt: c.startedAt, endedAt: c.endedAt, lines: c.lines });
 const snapshot = () => ({
@@ -42,6 +26,7 @@ const snapshot = () => ({
   saving: !!store.folder, folder: store.folder, liveIds: [...live.values()].map(l => l.conversation.id),
   // audio arrives all the time during a call, silence included: a gap means the app stopped passing it on
   noAudio: [...live.values()].some(l => Date.now() - l.audioAt > 15000),
+  server: client.status(),
 });
 const refresh = () => api.send('state', snapshot());
 
@@ -102,6 +87,7 @@ module.exports = {
   activate(pluginApi) {
     api = pluginApi;
     store = new Store(storeOptions(api.settings.get()));
+    client = createClient(() => api.settings.get());
     api.settings.onChange(s => { try { store.configure(storeOptions(s)); lastError = null; } catch (e) { lastError = `Can't use the folder: ${e.message}`; } refresh(); });
     api.calls.on('start', startCall);
     api.calls.on('update', call => {

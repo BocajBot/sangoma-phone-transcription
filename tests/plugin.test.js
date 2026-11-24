@@ -82,3 +82,35 @@ test('store: saving to a folder writes each conversation, reloads them, and dele
     assert.deepEqual(fs.readdirSync(dir), []);
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });
+
+test('servers: the second server takes over when the first is away, and the first is tried again later', async () => {
+  const { createClient, RETRY_MS } = require('../lib/servers');
+  let clock = 0, mainUp = false;
+  const calls = [];
+  const fetchImpl = async (url, options) => {
+    calls.push(url);
+    if (url.startsWith('http://main')) {
+      if (!mainUp) { const e = new Error('fetch failed'); e.cause = { code: 'ECONNREFUSED' }; throw e; }
+      assert.equal(options.headers.Authorization, 'Bearer k');
+      assert.ok(options.body instanceof FormData);
+      return { ok: true, json: async () => ({ text: ' from main ' }) };
+    }
+    assert.equal(options.headers['x-local-secret'], 's');
+    return { ok: true, json: async () => ({ text: 'from fallback' }) };
+  };
+  const settings = { server: 'http://main:8790', endpoint: '/v1/audio/transcriptions', api: 'openai', model: 'salm', authHeader: 'Authorization', authValue: 'Bearer k',
+    fallbackEnabled: true, fallbackServer: 'http://127.0.0.1:8787', fallbackEndpoint: '/transcribe', fallbackApi: 'raw', fallbackAuthHeader: 'x-local-secret', fallbackAuthValue: 's' };
+  const c = createClient(() => settings, { fetchImpl, now: () => clock });
+  const pcm = new Int16Array(1600);
+  assert.equal(await c.transcribe(pcm), 'from fallback');
+  assert.deepEqual(c.status().using, 'fallback');
+  assert.match(c.status().mainError, /can't be reached \(ECONNREFUSED\)/);
+  calls.length = 0;
+  assert.equal(await c.transcribe(pcm), 'from fallback');
+  assert.deepEqual(calls, ['http://127.0.0.1:8787/transcribe'], 'the absent server is not tried for every utterance');
+  mainUp = true; clock = RETRY_MS + 1;
+  assert.equal(await c.transcribe(pcm), 'from main');
+  assert.equal(c.status().using, 'main');
+  settings.fallbackEnabled = false; mainUp = false;
+  await assert.rejects(() => c.transcribe(pcm), /can't be reached/, 'without a second server the failure is reported');
+});

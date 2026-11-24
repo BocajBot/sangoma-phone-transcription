@@ -30,6 +30,7 @@ To update: `git pull` in that folder, then switch the plugin off and on (or rest
 | Speech-to-text server, Endpoint | Where the Whisper server listens, e.g. `http://192.168.1.20:8790` and `/transcribe` |
 | How the server takes audio | A WAV file as the request body, or OpenAI style (`/v1/audio/transcriptions`) |
 | Secret header name, Secret | Sent with every request if the server wants one (default header: `x-local-secret`) |
+| Use a second server when the first can't be reached | Its own address, endpoint, style and secret. Utterances go there while the first server is away; the first is tried again every 30 seconds. The Transcripts page says when the second one is in use |
 | Switch to Transcripts when a call starts | Off by default, so the call screen stays in front |
 | Save transcripts on this computer | On: one JSON file per call in the folder you choose. Off: kept in memory until the app closes |
 | Memory transcripts may use | Only when not saving: a share of this computer's memory, 85% at most. When it is full, the oldest conversations are dropped (the window says how many) |
