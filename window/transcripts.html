@@ -73,9 +73,27 @@ function render() {
 }
 $('copy').onclick = () => {
   const c = state.conversations.find(x => x.id === selected);
-  if (c) navigator.clipboard.writeText(c.lines.map(l => `[${time(l.at)}] ${l.speaker}: ${l.text}`).join('\n'));
+  if (!c) return;
+  const text = [`${who(c)}${c.number && c.display ? ` (${c.number})` : ''} · ${day(c.startedAt)}`, ...c.lines.map(l => `[${time(l.at)}] ${l.speaker}: ${l.text}`)].join('\n');
+  window.plugin.invoke('copy', text).then(() => {
+    $('copy').textContent = 'Copied';
+    setTimeout(() => { $('copy').textContent = 'Copy'; }, 1500);
+  }).catch(e => { $('status').className = 'error'; $('status').textContent = `Could not copy: ${e.message}`; });
 };
-$('remove').onclick = () => { if (selected && confirm('Delete this transcript?')) window.plugin.invoke('remove', selected); };
+// Two clicks instead of a system dialog: the first arms the button for three seconds.
+let armed = null;
+$('remove').onclick = () => {
+  if (!selected) return;
+  if (armed !== selected) {
+    armed = selected;
+    $('remove').textContent = 'Really delete?';
+    setTimeout(() => { armed = null; $('remove').textContent = 'Delete'; }, 3000);
+    return;
+  }
+  armed = null;
+  $('remove').textContent = 'Delete';
+  window.plugin.invoke('remove', selected);
+};
 window.plugin.on('state', s => { state = s; render(); });
 window.plugin.invoke('state').then(s => { state = s; render(); });
 </script>

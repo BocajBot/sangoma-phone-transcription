@@ -111,6 +111,8 @@ module.exports = {
     });
     api.handle('state', snapshot);
     api.handle('remove', id => { store.remove(id); refresh(); });
+    // The page can't write to the clipboard itself (the app only grants pages media permissions).
+    api.handle('copy', text => { require('electron').clipboard.writeText(String(text)); return true; });
     api.onAction('open', openWindow);
     if (api.addNavItem) api.addNavItem({ id: 'transcripts', label: 'Transcripts', file: 'window/transcripts.html', icon: ICON });
   },
