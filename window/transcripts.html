@@ -12,6 +12,10 @@
   nav button { display: block; width: 100%; text-align: left; padding: 10px 12px; border: 0; border-bottom: 1px solid var(--line); background: none; color: inherit; font: inherit; cursor: pointer; }
   nav button.on { background: rgba(21, 143, 207, .15); }
   nav small, .muted { color: var(--muted); }
+  nav .row { display: flex; align-items: baseline; gap: 8px; }
+  nav .name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .len { flex: none; font-variant-numeric: tabular-nums; color: var(--muted); font-size: 12.5px; }
+  .live .len { color: var(--live); }
   .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--live); margin-right: 6px; animation: blink 1.2s infinite; }
   @keyframes blink { 50% { opacity: .25; } }
   main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
@@ -39,6 +43,14 @@ const $ = id => document.getElementById(id);
 const time = t => new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 const day = t => new Date(t).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 const who = c => c.display || c.number || 'Unknown caller';
+// How long the call has lasted since it was answered, like the app's own timer: 4:07, 1:02:33.
+const two = n => String(n).padStart(2, '0');
+function length(ms) {
+  const s = Math.max(0, Math.floor(ms / 1000)), h = Math.floor(s / 3600), m = Math.floor(s / 60) % 60;
+  return h ? `${h}:${two(m)}:${two(s % 60)}` : `${m}:${two(s % 60)}`;
+}
+const lengthOf = (c, live) => (live ? length(Date.now() - c.startedAt) : c.endedAt ? length(c.endedAt - c.startedAt) : '');
+const lenSpan = (c, live) => Object.assign(document.createElement('span'), { className: 'len', textContent: lengthOf(c, live), title: 'Call length' });
 
 function render() {
   const live = new Set(state.liveIds);
@@ -47,15 +59,21 @@ function render() {
   const list = $('list');
   list.replaceChildren();
   for (const c of [...state.conversations].reverse()) {
-    const b = document.createElement('button');
-    b.className = c.id === selected ? 'on' : '';
-    if (live.has(c.id)) b.append(Object.assign(document.createElement('span'), { className: 'dot', title: 'Transcribing' }));
-    b.append(who(c), document.createElement('br'), Object.assign(document.createElement('small'), { textContent: `${day(c.startedAt)} · ${c.lines.length} lines` }));
+    const b = document.createElement('button'), on = live.has(c.id);
+    b.className = (c.id === selected ? 'on' : '') + (on ? ' live' : '');
+    const row = Object.assign(document.createElement('div'), { className: 'row' });
+    const name = Object.assign(document.createElement('span'), { className: 'name', textContent: who(c), title: who(c) });
+    if (on) name.prepend(Object.assign(document.createElement('span'), { className: 'dot', title: 'Transcribing' }));
+    row.append(name, lenSpan(c, on));
+    b.append(row, Object.assign(document.createElement('small'), { textContent: `${day(c.startedAt)} · ${c.lines.length} lines` }));
+    b.dataset.id = c.id;
     b.onclick = () => { selected = c.id; follow = live.has(c.id); render(); };
     list.append(b);
   }
   const c = state.conversations.find(x => x.id === selected);
   $('title').textContent = c ? `${who(c)}${c.number && c.display ? ` (${c.number})` : ''} · ${day(c.startedAt)}${live.has(c.id) ? ' · transcribing…' : ''}` : 'No conversation yet. Transcripts appear here during a call.';
+  if (c) $('title').append(' ', lenSpan(c, live.has(c.id)));
+  $('title').dataset.id = c ? c.id : '';
   $('copy').hidden = $('remove').hidden = !c;
   const lines = $('lines'), atEnd = lines.scrollHeight - lines.scrollTop - lines.clientHeight < 60;
   lines.replaceChildren();
@@ -76,7 +94,8 @@ function render() {
 $('copy').onclick = () => {
   const c = state.conversations.find(x => x.id === selected);
   if (!c) return;
-  const text = [`${who(c)}${c.number && c.display ? ` (${c.number})` : ''} · ${day(c.startedAt)}`, ...c.lines.map(l => `[${time(l.at)}] ${l.speaker}: ${l.text}`)].join('\n');
+  const len = lengthOf(c, state.liveIds.includes(c.id));
+  const text = [`${who(c)}${c.number && c.display ? ` (${c.number})` : ''} · ${day(c.startedAt)}${len ? ` · ${len}` : ''}`, ...c.lines.map(l => `[${time(l.at)}] ${l.speaker}: ${l.text}`)].join('\n');
   window.plugin.invoke('copy', text).then(() => {
     $('copy').textContent = 'Copied';
     setTimeout(() => { $('copy').textContent = 'Copy'; }, 1500);
@@ -96,6 +115,16 @@ $('remove').onclick = () => {
   $('remove').textContent = 'Delete';
   window.plugin.invoke('remove', selected);
 };
+// Calls in progress: their length counts up (only those numbers change, so a selection in the text stays).
+setInterval(() => {
+  const live = new Set(state.liveIds);
+  if (!live.size) return;
+  for (const el of document.querySelectorAll('[data-id]')) {
+    const c = live.has(el.dataset.id) && state.conversations.find(x => x.id === el.dataset.id);
+    const len = c && el.querySelector('.len');
+    if (len) len.textContent = lengthOf(c, true);
+  }
+}, 1000);
 window.plugin.on('state', s => { state = s; render(); });
 window.plugin.invoke('state').then(s => { state = s; render(); });
 </script>

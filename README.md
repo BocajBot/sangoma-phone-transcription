@@ -2,8 +2,14 @@
 
 A plugin for the unofficial Sangoma Phone builds that have a **Plugins** page (☰ / tray / Sangoma Phone
 menu → Plugins). It adds **Transcripts** to the app's navigation bar, under Chat: a live transcript of each call with both sides
-labelled, and the transcripts of earlier calls. Speech-to-text is done by a Whisper server you run
-yourself; no audio goes anywhere else.
+labelled, and the transcripts of earlier calls, each with the length of the call. Speech-to-text is done
+by a Whisper server you run yourself; no audio goes anywhere else.
+
+During a call the app's own call bar (hold, transfer, merge, more, hang up, mute, volume) stays above the
+transcript, so the call can be handled without leaving it. For a transfer the page steps aside to show the
+app's dialer and comes back afterwards. This needs an app build with plugin API 3 (builds before it show
+the transcript alone). The call bar is only there while the app's Talk tab is the current one; from Chat,
+the app's floating call window does that job.
 
 Transcribing records what both people say. Tell the people you talk to where the law or your company
 requires it. The plugin is off until you switch it on, and Transcripts shows a red dot

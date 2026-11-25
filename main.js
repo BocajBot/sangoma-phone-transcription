@@ -109,7 +109,13 @@ module.exports = {
     api.onAction('open', openWindow);
     for (const call of api.calls.list ? api.calls.list() : []) startCall(call);  // switched on during a call
     watchdog = setInterval(() => { if (live.size) refresh(); }, 5000);
-    if (api.addNavItem) api.addNavItem({ id: 'transcripts', label: 'Transcripts', file: 'window/transcripts.html', icon: ICON });
+    // The call in progress (the app's own call list with hold, transfer, merge, hang up...) stays in view
+    // above the transcript. For a transfer the app's dialer is needed, so the page steps aside meanwhile.
+    // Hosts before plugin API 3 ignore the pin and show the page alone.
+    if (api.addNavItem) {
+      api.addNavItem({ id: 'transcripts', label: 'Transcripts', file: 'window/transcripts.html', icon: ICON,
+        pin: { selector: '.calls', when: '.callRow, .CallRow, .incomingCallRow', stepAsideFor: '.dialer .dialButton.transfer' } });
+    }
   },
   deactivate() { clearInterval(watchdog); for (const id of [...live.keys()]) endCall({ id, endedAt: Date.now() }); },
 };
